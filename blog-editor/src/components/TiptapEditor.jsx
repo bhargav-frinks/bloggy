@@ -39,7 +39,7 @@ export default function TiptapEditor({ content, onUpdate, onMediaAdd, editable =
         heading: { levels: [1, 2, 3] },
       }),
       Image.configure({
-        inline: false,
+        inline: true,
         allowBase64: true,
       }),
       Video,

@@ -10,12 +10,16 @@ export default function BlogEditorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
+  const [name, setName] = useState('');
+  const [pathName, setPathName] = useState('');
   const [category, setCategory] = useState('');
+  const [shortDescription, setShortDescription] = useState('');
   
   // File objects for uploading
   const [coverImageFile, setCoverImageFile] = useState(null);
-  // Temporary URL for previewing before upload
   const [coverImagePreview, setCoverImagePreview] = useState('');
+  
+  const [authorImageFile, setAuthorImageFile] = useState(null);
   
   const [content, setContent] = useState({ json: null, html: '' });
   // Store media files (images/videos) added inside the editor
@@ -42,20 +46,31 @@ export default function BlogEditorPage() {
       const formData = new FormData();
       formData.append('title', title.trim());
       formData.append('category', category.trim() || 'General');
+
+      formData.append('pathName', pathName.trim());
+      formData.append('shortDescription', shortDescription.trim());
       
       // Store the content logic
       formData.append('contentJson', JSON.stringify(content.json));
       formData.append('contentHtml', content.html);
 
       // Append author information
+      if (name) {
+         formData.append('authorName', name || '');
+      }
+
       if (user) {
-         formData.append('authorId', user.id || '');
-         formData.append('authorName', user.name || '');
+        formData.append('created_by', user.id);
       }
 
       // Append cover image
       if (coverImageFile) {
         formData.append('coverImage', coverImageFile);
+      }
+
+      // Append author image
+      if (authorImageFile) {
+        formData.append('authorImage', authorImageFile);
       }
 
       // Append inside blog files
@@ -80,13 +95,7 @@ export default function BlogEditorPage() {
          }
       });
       
-      // Assume the backend returns the saved blog id
       const newBlogId = response?.data?.id || Date.now().toString();
-
-      // OPTIONAL: Local fallback for dev if no backend is running
-      // const existing = JSON.parse(localStorage.getItem('blogs') || '[]');
-      // existing.push({...});
-      // localStorage.setItem('blogs', JSON.stringify(existing));
 
       navigate(`/blog/${newBlogId}`);
     } catch (err) {
@@ -123,8 +132,22 @@ export default function BlogEditorPage() {
                 <option value="News">News</option>
               </select>
             </div>
-            <div className="meta-input-group">
+            <div className="meta-input-group" style={{ position: 'relative' }}>
               <FiImage className="meta-icon" />
+              <div style={{
+                  width: '100%',
+                  padding: '12px 12px 12px 38px',
+                  border: '1.5px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '0.9rem',
+                  background: 'var(--color-bg-white)',
+                  color: coverImageFile ? 'var(--color-text)' : 'var(--color-text-light)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+              }}>
+                 {coverImageFile ? coverImageFile.name : "Upload Cover Image"}
+              </div>
               <input
                 type="file"
                 accept="image/*"
@@ -136,17 +159,99 @@ export default function BlogEditorPage() {
                   setCoverImagePreview(URL.createObjectURL(file));
                 }}
                 style={{
-                   padding: '12px 12px 12px 38px', // match existing input padding
+                   position: 'absolute',
+                   top: 0,
+                   left: 0,
+                   width: '100%',
+                   height: '100%',
+                   opacity: 0,
+                   cursor: 'pointer'
                 }}
               />
             </div>
           </div>
 
-          {coverImagePreview && (
-            <div className="cover-preview">
-              <img src={coverImagePreview} alt="Cover preview" style={{ objectFit: 'contain' }} />
+          <div className="editor-meta-row">
+            <div className="meta-input-group">
+              <FiTag className="meta-icon" />
+              <input
+                type="name"
+                placeholder="Author Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+              />
             </div>
-          )}
+            <div className="meta-input-group" style={{ position: 'relative' }}>
+              <FiImage className="meta-icon" />
+              <div style={{
+                  width: '100%',
+                  padding: '12px 12px 12px 38px',
+                  border: '1.5px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '0.9rem',
+                  background: 'var(--color-bg-white)',
+                  color: authorImageFile ? 'var(--color-text)' : 'var(--color-text-light)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+              }}>
+                 {authorImageFile ? authorImageFile.name : "Upload Author Image"}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  
+                  setAuthorImageFile(file);
+                }}
+                style={{
+                   position: 'absolute',
+                   top: 0,
+                   left: 0,
+                   width: '100%',
+                   height: '100%',
+                   opacity: 0,
+                   cursor: 'pointer'
+                }}
+              />
+            </div>
+            
+          </div>
+          <div className="editor-meta-row">
+            <div className="meta-input-group">
+              <FiTag className="meta-icon" />
+              <input
+                type="name"
+                placeholder="Path Name"
+                value={pathName}
+                onChange={(e) => setPathName(e.target.value)}
+                autoComplete="pathName"
+              />
+            </div>
+            <div className="meta-input-group" style={{ position: 'relative' }}>
+              <FiTag className="meta-icon" />
+              <input
+                type="name"
+                placeholder="Short Description"
+                value={shortDescription}
+                onChange={(e) => setShortDescription(e.target.value)}
+                autoComplete="shortDescription"
+              />
+            </div>
+            
+          </div>
+
+          <div className="previews-container" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+            {coverImagePreview && (
+              <div className="cover-preview" style={{ flex: 1, minWidth: '300px', margin: 0 }}>
+                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--color-text-light)' }}>Cover Image Preview</p>
+                <img src={coverImagePreview} alt="Cover preview" style={{ objectFit: 'contain', width: '100%', height: '100%', borderRadius: 'var(--radius-lg)' }} />
+              </div>
+            )}
+          </div>
         </div>
 
         <TiptapEditor

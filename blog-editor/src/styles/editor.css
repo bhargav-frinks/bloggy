@@ -266,8 +266,10 @@
     max-width: 100%;
     height: auto;
     border-radius: var(--radius-md);
-    margin: 1rem 0;
+    margin: 0.5rem;
     box-shadow: var(--shadow-sm);
+    display: inline-block;
+    vertical-align: middle;
 }
 
 .tiptap-editor-container .tiptap video {
