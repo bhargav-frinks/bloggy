@@ -14,17 +14,16 @@ export const uploadMediaForEditor = async (file) => {
         const baseURL = import.meta.env.VITE_BASE_API_URL || 'http://localhost:9000/api';
         const token = localStorage.getItem('blog_token');
 
-        const response = await axios.post(`${baseURL}/upload`, formData, {
+        const response = await axios.post(`${baseURL}/new-blog/upload-image`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
         });
 
-        // We assume the response structure is { url: 'https://...' } based on common patterns.
-        // If the backend returns something different (e.g., { data: { cloudfront_url: '...' } }),
-        // we would need to adjust this.
-        return response.data.url;
+        console.log('Upload response:', response.data);
+        const url = response.data?.data?.url || response.data?.url || response.data;
+        return url;
     } catch (error) {
         console.error('Error uploading media:', error);
         throw new Error('Failed to upload media. Please try again.');

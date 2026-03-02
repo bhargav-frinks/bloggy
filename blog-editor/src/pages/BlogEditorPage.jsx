@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import TiptapEditor from '../components/TiptapEditor';
 import { FiImage, FiSend, FiTag } from 'react-icons/fi';
+import { uploadMediaForEditor } from '../shared/utils/uploadMedia';
 import axios from 'axios';
 import '../styles/editor.css';
+import { getCDNUrl } from "../utils/cdn";
 
 export default function BlogEditorPage() {
   const { user } = useAuth();
@@ -15,20 +17,51 @@ export default function BlogEditorPage() {
   const [category, setCategory] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   
-  // File objects for uploading
-  const [coverImageFile, setCoverImageFile] = useState(null);
-  const [coverImagePreview, setCoverImagePreview] = useState('');
+  // S3 URLs for uploaded images
+  const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [coverImageUploading, setCoverImageUploading] = useState(false);
+  const [coverImageFileName, setCoverImageFileName] = useState('');
   
-  const [authorImageFile, setAuthorImageFile] = useState(null);
+  const [authorImageUrl, setAuthorImageUrl] = useState('');
+  const [authorImageUploading, setAuthorImageUploading] = useState(false);
+  const [authorImageFileName, setAuthorImageFileName] = useState('');
   
   const [content, setContent] = useState({ json: null, html: '' });
-  // Store media files (images/videos) added inside the editor
-  const [mediaFiles, setMediaFiles] = useState([]);
   
   const [publishing, setPublishing] = useState(false);
 
-  const handleMediaAdd = (file, url) => {
-    setMediaFiles(prev => [...prev, { file, url }]);
+  const handleCoverImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setCoverImageUploading(true);
+      const s3Url = await uploadMediaForEditor(file);
+      setCoverImageUrl(s3Url);
+      setCoverImageFileName(file.name);
+    } catch (err) {
+      console.error('Cover image upload failed:', err);
+      alert('Failed to upload cover image. Please try again.');
+    } finally {
+      setCoverImageUploading(false);
+    }
+  };
+
+  const handleAuthorImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setAuthorImageUploading(true);
+      const s3Url = await uploadMediaForEditor(file);
+      setAuthorImageUrl(s3Url);
+      setAuthorImageFileName(file.name);
+    } catch (err) {
+      console.error('Author image upload failed:', err);
+      alert('Failed to upload author image. Please try again.');
+    } finally {
+      setAuthorImageUploading(false);
+    }
   };
 
   const handlePublish = async () => {
@@ -50,7 +83,7 @@ export default function BlogEditorPage() {
       formData.append('pathName', pathName.trim());
       formData.append('shortDescription', shortDescription.trim());
       
-      // Store the content logic
+      // Store the content (images inside are already S3 URLs)
       formData.append('contentJson', JSON.stringify(content.json));
       formData.append('contentHtml', content.html);
 
@@ -63,31 +96,31 @@ export default function BlogEditorPage() {
         formData.append('created_by', user.id);
       }
 
-      // Append cover image
-      if (coverImageFile) {
-        formData.append('coverImage', coverImageFile);
+      // Helper to generate the CDN URL dynamically
+      const parseCDNUrl = (urlStr) => {
+        try {
+          const parsedUrl = new URL(urlStr);
+          const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+          const fileName = pathParts.pop();
+          const typePath = pathParts.join('/');
+          return getCDNUrl(typePath, fileName);
+        } catch(e) {
+          return urlStr;
+        }
+      };
+
+      // Send S3 URLs instead of raw files
+      if (coverImageUrl) {
+        formData.append('coverImageUrl', parseCDNUrl(coverImageUrl));
       }
 
-      // Append author image
-      if (authorImageFile) {
-        formData.append('authorImage', authorImageFile);
+      if (authorImageUrl) {
+        formData.append('authorImageUrl', parseCDNUrl(authorImageUrl));
       }
-
-      // Append inside blog files
-      // We pass the local blob URLs along with the files so the backend can map them in the content JSON/HTML.
-      // E.g., appending 'mediaFiles' with specific filenames or mapping.
-      mediaFiles.forEach((media, index) => {
-        // Appending standard 'media' field with the file, you might also need 
-        // to pass mapping data so the backend can replace `media.url` with the S3 url.
-        formData.append('media', media.file);
-        // We'll also send the temporary URL so the backend knows which file matches which URL in the HTML/JSON
-        formData.append('media_mapping_urls', media.url); 
-      });
 
       const baseURL = import.meta.env.VITE_BASE_API_URL || 'http://localhost:9000/api';
       const token = localStorage.getItem('blog_token');
 
-      // Now send the complete blog to the single API
       const response = await axios.post(`${baseURL}/new-blog/create`, formData, {
          headers: {
            'Content-Type': 'multipart/form-data',
@@ -141,23 +174,18 @@ export default function BlogEditorPage() {
                   borderRadius: 'var(--radius-md)',
                   fontSize: '0.9rem',
                   background: 'var(--color-bg-white)',
-                  color: coverImageFile ? 'var(--color-text)' : 'var(--color-text-light)',
+                  color: coverImageUrl ? 'var(--color-text)' : 'var(--color-text-light)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
               }}>
-                 {coverImageFile ? coverImageFile.name : "Upload Cover Image"}
+                 {coverImageUploading ? 'Uploading...' : coverImageUrl ? (coverImageFileName || 'Cover Image Uploaded ✓') : 'Upload Cover Image'}
               </div>
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  
-                  setCoverImageFile(file);
-                  setCoverImagePreview(URL.createObjectURL(file));
-                }}
+                onChange={handleCoverImageUpload}
+                disabled={coverImageUploading}
                 style={{
                    position: 'absolute',
                    top: 0,
@@ -165,7 +193,7 @@ export default function BlogEditorPage() {
                    width: '100%',
                    height: '100%',
                    opacity: 0,
-                   cursor: 'pointer'
+                   cursor: coverImageUploading ? 'wait' : 'pointer'
                 }}
               />
             </div>
@@ -191,22 +219,18 @@ export default function BlogEditorPage() {
                   borderRadius: 'var(--radius-md)',
                   fontSize: '0.9rem',
                   background: 'var(--color-bg-white)',
-                  color: authorImageFile ? 'var(--color-text)' : 'var(--color-text-light)',
+                  color: authorImageUrl ? 'var(--color-text)' : 'var(--color-text-light)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
               }}>
-                 {authorImageFile ? authorImageFile.name : "Upload Author Image"}
+                 {authorImageUploading ? 'Uploading...' : authorImageUrl ? (authorImageFileName || 'Author Image Uploaded ✓') : 'Upload Author Image'}
               </div>
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  
-                  setAuthorImageFile(file);
-                }}
+                onChange={handleAuthorImageUpload}
+                disabled={authorImageUploading}
                 style={{
                    position: 'absolute',
                    top: 0,
@@ -214,7 +238,7 @@ export default function BlogEditorPage() {
                    width: '100%',
                    height: '100%',
                    opacity: 0,
-                   cursor: 'pointer'
+                   cursor: authorImageUploading ? 'wait' : 'pointer'
                 }}
               />
             </div>
@@ -245,10 +269,33 @@ export default function BlogEditorPage() {
           </div>
 
           <div className="previews-container" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-            {coverImagePreview && (
+            {coverImageUrl && (
               <div className="cover-preview" style={{ flex: 1, minWidth: '300px', margin: 0 }}>
                 <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--color-text-light)' }}>Cover Image Preview</p>
-                <img src={coverImagePreview} alt="Cover preview" style={{ objectFit: 'contain', width: '100%', height: '100%', borderRadius: 'var(--radius-lg)' }} />
+                <img src={(() => {
+                  try {
+                    const parsedUrl = new URL(coverImageUrl);
+                    const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+                    const fileName = pathParts.pop();
+                    const typePath = pathParts.join('/');
+                    
+                    return getCDNUrl(typePath, fileName);
+                  } catch(e) { return coverImageUrl; }
+                })()} alt="Cover preview" style={{ objectFit: 'contain', width: '100%', height: '100%', borderRadius: 'var(--radius-lg)' }} />
+              </div>
+            )}
+            {authorImageUrl && (
+              <div className="author-preview" style={{ flex: 0, minWidth: '100px', margin: 0 }}>
+                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--color-text-light)' }}>Author Image Preview</p>
+                <img src={(() => {
+                  try {
+                    const parsedUrl = new URL(authorImageUrl);
+                    const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+                    const fileName = pathParts.pop();
+                    const typePath = pathParts.join('/');
+                    return getCDNUrl(typePath, fileName);
+                  } catch(e) { return authorImageUrl; }
+                })()} alt="Author preview" style={{ objectFit: 'contain', width: '100px', height: '100px', borderRadius: '50%' }} />
               </div>
             )}
           </div>
@@ -257,14 +304,13 @@ export default function BlogEditorPage() {
         <TiptapEditor
           content="<p></p>"
           onUpdate={setContent}
-          onMediaAdd={handleMediaAdd}
         />
 
         <div className="editor-actions">
           <button
             className="publish-btn"
             onClick={handlePublish}
-            disabled={publishing}
+            disabled={publishing || coverImageUploading || authorImageUploading}
           >
             <FiSend />
             <span>{publishing ? 'Publishing...' : 'Publish Story'}</span>
@@ -274,3 +320,4 @@ export default function BlogEditorPage() {
     </div>
   );
 }
+

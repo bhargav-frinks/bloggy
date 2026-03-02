@@ -7,37 +7,76 @@ import {
   LuHeading1, LuHeading2, LuHeading3, LuListOrdered,
   LuQuote, LuStrikethrough
 } from 'react-icons/lu';
+import { uploadMediaForEditor } from '../shared/utils/uploadMedia';
+import { getCDNUrl } from '../utils/cdn';
 import '../styles/editor.css';
 
-export default function EditorToolbar({ editor, onMediaAdd }) {
+export default function EditorToolbar({ editor }) {
   const imageInputRef = useRef(null);
   const videoInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
 
   if (!editor) return null;
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const url = URL.createObjectURL(file);
-    if (onMediaAdd) onMediaAdd(file, url);
-    
-    editor.chain().focus().setImage({ src: url }).run();
-    if (imageInputRef.current) imageInputRef.current.value = '';
+    try {
+      setUploading(true);
+      const s3Url = await uploadMediaForEditor(file);
+      
+      let finalUrl = s3Url;
+      try {
+        const parsedUrl = new URL(s3Url);
+        const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+        const fileName = pathParts.pop();
+        const typePath = pathParts.join('/');
+        finalUrl = getCDNUrl(typePath, fileName);
+      } catch (e) {
+        finalUrl = s3Url;
+      }
+
+      editor.chain().focus().setImage({ src: finalUrl }).run();
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
   };
 
-  const handleVideoUpload = (e) => {
+  const handleVideoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const url = URL.createObjectURL(file);
-    if (onMediaAdd) onMediaAdd(file, url);
+    try {
+      setUploading(true);
+      const s3Url = await uploadMediaForEditor(file);
+      
+      let finalUrl = s3Url;
+      try {
+        const parsedUrl = new URL(s3Url);
+        const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+        const fileName = pathParts.pop();
+        const typePath = pathParts.join('/');
+        finalUrl = getCDNUrl(typePath, fileName);
+      } catch (e) {
+        finalUrl = s3Url;
+      }
 
-    editor.chain().focus().insertContent({
-      type: 'video',
-      attrs: { src: url },
-    }).run();
-    if (videoInputRef.current) videoInputRef.current.value = '';
+      editor.chain().focus().insertContent({
+        type: 'video',
+        attrs: { src: finalUrl },
+      }).run();
+    } catch (err) {
+      console.error('Video upload failed:', err);
+      alert('Failed to upload video. Please try again.');
+    } finally {
+      setUploading(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+    }
   };
 
   const ToolBtn = ({ onClick, isActive, title, children }) => (
