@@ -16,6 +16,45 @@
     margin-bottom: var(--space-xl);
 }
 
+.ProseMirror {
+  white-space: pre-wrap;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  table-layout: auto;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid #d1d5db;   /* column separators */
+  padding: 10px 12px;
+  vertical-align: top;
+}
+
+.ProseMirror th {
+  background: #f5f5f5;
+  font-weight: 600;
+}
+
+.ProseMirror tr:nth-child(even) {
+  background: #fafafa;
+}
+
+/* Optional: nicer look */
+
+.ProseMirror table {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ProseMirror .column-resize-handle {
+  background-color: #2563eb;
+  width: 3px;
+}
+
 .editor-title-input {
     width: 100%;
     font-family: var(--font-serif);
