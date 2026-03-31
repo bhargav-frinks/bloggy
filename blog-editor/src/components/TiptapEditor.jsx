@@ -15,7 +15,6 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import EditorToolbar from './EditorToolbar';
 
 import '../styles/editor.css';
-e
 
 // ---------------- VIDEO NODE ----------------
 
@@ -61,7 +60,7 @@ export default function TiptapEditor({
     extensions: [
 
       StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
+        heading: { levels: [1, 2] },
       }),
 
       Image.configure({

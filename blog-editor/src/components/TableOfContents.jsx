@@ -6,7 +6,7 @@ export default function TableOfContents({ content }) {
     if (!content) return [];
     const parser = new DOMParser();
     const doc = parser.parseFromString(content, 'text/html');
-    const elements = doc.querySelectorAll('h1, h2, h3');
+    const elements = doc.querySelectorAll('h1, h2');
     return Array.from(elements).map((el, index) => ({
       id: `heading-${index}`,
       text: el.textContent,
@@ -25,7 +25,7 @@ export default function TableOfContents({ content }) {
 
   return (
     <div className="toc-container">
-      <h3 className="toc-title">Table of Contents</h3>
+      <h2 className="toc-title">Table of Contents</h2>
       <ul className="toc-list">
         {headings.map((heading) => (
           <li

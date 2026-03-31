@@ -22,7 +22,7 @@ export default function BlogViewPage() {
   const processedHtml = useMemo(() => {
     if (!blog?.html) return '';
     let headingIndex = 0;
-    return blog.html.replace(/<(h[1-3])([^>]*)>/gi, (match, tag, attrs) => {
+    return blog.html.replace(/<(h[1-2])([^>]*)>/gi, (match, tag, attrs) => {
       return `<${tag}${attrs} id="heading-${headingIndex++}">`;
     });
   }, [blog]);
