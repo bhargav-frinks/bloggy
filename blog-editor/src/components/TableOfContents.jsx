@@ -6,7 +6,7 @@ export default function TableOfContents({ content }) {
     if (!content) return [];
     const parser = new DOMParser();
     const doc = parser.parseFromString(content, 'text/html');
-    const elements = doc.querySelectorAll('h1, h2');
+    const elements = doc.querySelectorAll('h1, h2','h3');
     return Array.from(elements).map((el, index) => ({
       id: `heading-${index}`,
       text: el.textContent,

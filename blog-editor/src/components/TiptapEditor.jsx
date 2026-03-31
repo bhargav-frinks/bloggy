@@ -60,7 +60,7 @@ export default function TiptapEditor({
     extensions: [
 
       StarterKit.configure({
-        heading: { levels: [1, 2] },
+        heading: { levels: [1, 2, 3] },
       }),
 
       Image.configure({
